@@ -138,10 +138,14 @@ class HTML2Text(html.parser.HTMLParser):
         data = data.replace("</' + 'script>", "</ignore>")
         super().feed(data)
 
-    def handle(self, data: str) -> str:
+    def handle(self, data: str, baseurl: str = "") -> str:
+        savebaseurl = self.baseurl
+        if baseurl:
+            self.baseurl = baseurl
         self.feed(data)
         self.feed("")
         markdown = self.optwrap(self.finish())
+        self.baseurl = savebaseurl
         if self.pad_tables:
             return pad_tables_in_text(markdown)
         else:
@@ -469,7 +473,10 @@ class HTML2Text(html.parser.HTMLParser):
             self.quote = not self.quote
 
         def link_url(self: HTML2Text, link: str, title: str = "") -> None:
-            url = urlparse.urljoin(self.baseurl, link)
+            if link.startswith('#'):
+                url = link
+            else:
+                url = urlparse.urljoin(self.baseurl, link)
             title = ' "{}"'.format(title) if title.strip() else ""
             self.o("]({url}{title})".format(url=escape_md(url), title=title))
 
@@ -485,6 +492,16 @@ class HTML2Text(html.parser.HTMLParser):
                     self.empty_link = True
                     if self.protect_links:
                         attrs["href"] = "<" + attrs["href"] + ">"
+                elif (
+                    "name" in attrs
+                    and attrs["name"] is not None
+                    and not self.skip_internal_links
+                ):
+                    # internal anchor
+                    self.astack.append(attrs)
+                    self.maybe_automatic_link = None
+                    self.empty_link = True
+                    self.o('<a name="{}">'.format(attrs["name"]))
                 else:
                     self.astack.append(None)
             else:
@@ -493,17 +510,32 @@ class HTML2Text(html.parser.HTMLParser):
                     if self.maybe_automatic_link and not self.empty_link:
                         self.maybe_automatic_link = None
                     elif a:
-                        assert a["href"] is not None
-                        if self.empty_link:
-                            self.o("[")
-                            self.empty_link = False
-                            self.maybe_automatic_link = None
-                        if self.inline_links:
-                            self.p_p = 0
-                            title = a.get("title") or ""
-                            title = escape_md(title)
-                            link_url(self, a["href"], title)
-                        else:
+                        if "href" in a:
+                            assert a["href"] is not None
+                            if self.empty_link:
+                                self.o("[")
+                                self.empty_link = False
+                                self.maybe_automatic_link = None
+                            if self.inline_links:
+                                self.p_p = 0
+                                title = a.get("title") or ""
+                                title = escape_md(title)
+                                link_url(self, a["href"], title)
+                            else:
+                                i = self.previousIndex(a)
+                                if i is not None:
+                                    a_props = self.a[i]
+                                else:
+                                    self.acount += 1
+                                    a_props = AnchorElement(a, self.acount, self.outcount)
+                                    self.a.append(a_props)
+                                self.o("][" + str(a_props.count) + "]")
+                        elif "name" in a:
+                            # anchor
+                            assert a["name"] is not None
+                            if self.empty_link:
+                                self.empty_link = False
+                                self.maybe_automatic_link = None
                             i = self.previousIndex(a)
                             if i is not None:
                                 a_props = self.a[i]
@@ -511,7 +543,7 @@ class HTML2Text(html.parser.HTMLParser):
                                 self.acount += 1
                                 a_props = AnchorElement(a, self.acount, self.outcount)
                                 self.a.append(a_props)
-                            self.o("][" + str(a_props.count) + "]")
+                            self.o("</a>")
 
         if tag == "img" and start and not self.ignore_images:
             if "src" in attrs:
@@ -650,6 +682,7 @@ class HTML2Text(html.parser.HTMLParser):
             else:
                 if tag == "table":
                     if start:
+                        self.soft_br()
                         self.table_start = True
                         if self.pad_tables:
                             self.o("<" + config.TABLE_MARKER_FOR_PAD + ">")
@@ -787,16 +820,17 @@ class HTML2Text(html.parser.HTMLParser):
                 newa = []
                 for link in self.a:
                     if self.outcount > link.outcount:
-                        self.out(
-                            "   ["
-                            + str(link.count)
-                            + "]: "
-                            + urlparse.urljoin(self.baseurl, link.attrs["href"])
-                        )
-                        if "title" in link.attrs:
-                            assert link.attrs["title"] is not None
-                            self.out(" (" + link.attrs["title"] + ")")
-                        self.out("\n")
+                        if "href" in link.attrs:
+                            self.out(
+                                "   ["
+                                + str(link.count)
+                                + "]: "
+                                + urlparse.urljoin(self.baseurl, link.attrs["href"])
+                            )
+                            if "title" in link.attrs:
+                                assert link.attrs["title"] is not None
+                                self.out(" (" + link.attrs["title"] + ")")
+                            self.out("\n")
                     else:
                         newa.append(link)
 
