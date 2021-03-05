@@ -645,7 +645,7 @@ class HTML2Text(html.parser.HTMLParser):
                 if self.google_doc:
                     nest_count = self.google_nest_count(tag_style)
                 else:
-                    nest_count = len(self.list)
+                    nest_count = len(self.list) - 1
                 # TODO: line up <ol><li>s > 9 correctly.
                 self.o("  " * nest_count)
                 if li.name == "ul":
