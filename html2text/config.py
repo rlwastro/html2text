@@ -147,6 +147,9 @@ BYPASS_TABLES = False
 # Ignore table-related tags (table, th, td, tr) while keeping rows
 IGNORE_TABLES = False
 
+# table column justification
+# options are right, center, left
+ALIGN_TABLE_COLUMNS = "right"
 
 # Use a single line break after a block element rather than two line breaks.
 # NOTE: Requires body width setting to be 0.

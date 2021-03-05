@@ -72,6 +72,7 @@ class HTML2Text(html.parser.HTMLParser):
         self.ul_item_mark = "*"  # covered in cli
         self.emphasis_mark = "_"  # covered in cli
         self.strong_mark = "**"
+        self.align_table_columns = config.ALIGN_TABLE_COLUMNS  # covered in cli
         self.single_line_break = config.SINGLE_LINE_BREAK  # covered in cli
         self.use_automatic_links = config.USE_AUTOMATIC_LINKS  # covered in cli
         self.hide_strikethrough = False  # covered in cli
@@ -120,6 +121,7 @@ class HTML2Text(html.parser.HTMLParser):
         self.emphasis = 0
         self.drop_white_space = 0
         self.inheader = False
+        self.intd = False
         # Current abbreviation definition
         self.abbr_title = None  # type: Optional[str]
         # Last inner HTML (for abbr being defined)
@@ -375,6 +377,9 @@ class HTML2Text(html.parser.HTMLParser):
         if tag == "br" and start:
             if self.blockquote > 0:
                 self.o("  \n> ")
+            elif self.intd:
+                # retain break tags inside table cells
+                self.o("<br/>")
             else:
                 self.o("  \n")
 
@@ -695,9 +700,12 @@ class HTML2Text(html.parser.HTMLParser):
                             self.o("</" + config.TABLE_MARKER_FOR_PAD + ">")
                             self.o("  \n")
                 if tag in ["td", "th"] and start:
+                    self.intd = True
                     if self.split_next_td:
                         self.o("| ")
                     self.split_next_td = True
+                if tag in ["td", "th"] and not start:
+                    self.intd = False
 
                 if tag == "tr" and start:
                     self.td_count = 0
@@ -706,7 +714,13 @@ class HTML2Text(html.parser.HTMLParser):
                     self.soft_br()
                 if tag == "tr" and not start and self.table_start:
                     # Underline table header
-                    self.o("|".join(["---"] * self.td_count))
+                    if self.align_table_columns == "left":
+                        separator = ":---"
+                    elif self.align_table_columns == "center":
+                        separator = ":---:"
+                    else:
+                        separator = "---"
+                    self.o("|".join([separator] * self.td_count))
                     self.soft_br()
                     self.table_start = False
                 if tag in ["td", "th"] and start:
@@ -911,6 +925,9 @@ class HTML2Text(html.parser.HTMLParser):
     def entityref(self, c: str) -> str:
         if not self.unicode_snob and c in config.UNIFIABLE:
             return config.UNIFIABLE[c]
+        if (not self.pre) and c in ["lt","gt"]:
+            # don't translate <> outside pre
+            return "&" + c + ";"
         try:
             ch = html.entities.html5[c + ";"]
         except KeyError:
