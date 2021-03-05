@@ -683,6 +683,9 @@ class HTML2Text(html.parser.HTMLParser):
                 if tag == "table":
                     if start:
                         self.soft_br()
+                        if self.single_line_break:
+                            # add an extra break before table in single-line mode
+                            self.o("\n")
                         self.table_start = True
                         if self.pad_tables:
                             self.o("<" + config.TABLE_MARKER_FOR_PAD + ">")
