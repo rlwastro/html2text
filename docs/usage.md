@@ -78,6 +78,7 @@ simple indications of their function.
     - IGNORE_EMPHASIS
     - BYPASS_TABLES format tables in HTML rather than Markdown
     - IGNORE_TABLES ignore table-related tags (table, th, td, tr) while keeping rows
+    - ALIGN_TABLE_COLUMNS to align table columns: 'right' (default), 'left', or 'center'
     - SINGLE_LINE_BREAK to use a single line break rather than two
     - UNIFIABLE is a dictionary which maps unicode abbreviations to ASCII
                 values

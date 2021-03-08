@@ -83,4 +83,4 @@ then open the `./htmlcov/index.html` file in your browser.
 
 ## Documentation
 
-Documentation lives [here](https://github.com/Alir3z4/html2text/blob/master/docs/usage.md)
+Documentation lives [here](docs/usage.md)
