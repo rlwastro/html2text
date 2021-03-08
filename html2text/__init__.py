@@ -374,6 +374,11 @@ class HTML2Text(html.parser.HTMLParser):
             else:
                 self.p()
 
+        if tag in ["sup","sub"]:
+            if start:
+                self.o("<{}>".format(tag))
+            else:
+                self.o("</{}>".format(tag))
         if tag == "br" and start:
             if self.blockquote > 0:
                 self.o("  \n> ")
