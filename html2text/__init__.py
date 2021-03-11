@@ -122,6 +122,7 @@ class HTML2Text(html.parser.HTMLParser):
         self.drop_white_space = 0
         self.inheader = False
         self.intd = False
+        self.lidepth = 0
         # Current abbreviation definition
         self.abbr_title = None  # type: Optional[str]
         # Last inner HTML (for abbr being defined)
@@ -369,6 +370,9 @@ class HTML2Text(html.parser.HTMLParser):
                     self.p()
                 else:
                     self.soft_br()
+            elif self.lidepth>0:
+                # replace paragraphs with break tags inside list items
+                self.o("<br/>")
             elif self.astack:
                 pass
             else:
@@ -382,8 +386,8 @@ class HTML2Text(html.parser.HTMLParser):
         if tag == "br" and start:
             if self.blockquote > 0:
                 self.o("  \n> ")
-            elif self.intd:
-                # retain break tags inside table cells
+            elif self.intd or self.lidepth>0:
+                # retain break tags inside table cells and list items
                 self.o("<br/>")
             else:
                 self.o("  \n")
@@ -649,6 +653,7 @@ class HTML2Text(html.parser.HTMLParser):
         if tag == "li":
             self.pbr()
             if start:
+                self.lidepth += 1
                 if self.list:
                     li = self.list[-1]
                 else:
@@ -665,6 +670,8 @@ class HTML2Text(html.parser.HTMLParser):
                     li.num += 1
                     self.o(str(li.num) + ". ")
                 self.start = True
+            else:
+                self.lidepth = max(self.lidepth-1,0)
 
         if tag in ["table", "tr", "td", "th"]:
             if self.ignore_tables:
