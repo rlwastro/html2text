@@ -483,6 +483,7 @@ class HTML2Text(html.parser.HTMLParser):
             self.quote = not self.quote
 
         def link_url(self: HTML2Text, link: str, title: str = "") -> None:
+            link = link.strip()
             if link.startswith('#'):
                 url = link
             else:
